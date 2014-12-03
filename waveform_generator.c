@@ -14,6 +14,7 @@ void initConfigs(void);
 void playNote(unsigned short note, unsigned int duration, unsigned short *current_phase);
 
 extern const unsigned short sine_wave[];
+unsigned char waveform_type = 0; // Start the waveform type as 0 (sine wave)
 
 // Lookup Table for Phase Steps 
 // Generated using python file generateWaveforms.py
@@ -36,8 +37,8 @@ int main() {
     unsigned short current_phase = 0;
 
     initConfigs();
-
-    for (unsigned short i = 0; i < total_notes; ++i) {
+    unsigned short i = 0;
+    for (; i < total_notes; ++i) {
         playNote(i, note_duration, &current_phase);
     }
 
@@ -48,6 +49,8 @@ int main() {
 
 // initConfigs
 // Initialize configuration registers in the PIC.
+// Timer initialization taken from the lab05c.c file provided by the instructor 
+// of E155.
 void initConfigs(void) {
     
     //  Assumes peripheral clock at 5MHz
@@ -62,7 +65,7 @@ void initConfigs(void) {
     //  bit 10-8: unused
     //  bit 7:  TGATE=0: disable gated accumulation
     //  bit 6:  unused
-    //  bit 5-4: TCKPS=11: 1:256 prescaler
+    //  bit 5-4: TCKPS=00: 1:1 prescaler
     //  bit 3:  unused
     //  bit 2:  don't care in internal clock mode
     //  bit 1:  TCS=0: use internal peripheral clock
@@ -76,6 +79,8 @@ void initConfigs(void) {
     PORTC = 0: // Output MSBs
     PORTD = 0; // Output LSBs
 
+
+
 }
 
 
@@ -88,15 +93,40 @@ void playNote(unsigned short note, unsigned int duration, unsigned short *curren
     TMR1 = 0; // Reset the timer
 
     while (current_duration < duration) {
+
+        // This is the code we will actually want inside of our interrupt
+        // function, sending the required samples to the FPGA
+        // Here, we should add all of the triggered notes together, and then 
+        // send them to the FPGA
+
+        // Problem is, the amount of time we should wait depends upon the number 
+        // of notes that are being played, as the number of instructions needed 
+        // per sample will differ based on how many notes we need to load and 
+        // add. So, polyphony on the PIC might be a wee bit difficult/impossible, 
+        // doing the timers as we are. If we change the interrupt period of the 
+        // timer to something based on the number of notes that might work, 
+        // but it seems like there'd be a lot of times where the timer could 
+        // then get off and our sample rate would drift considerably. We may have 
+        // to switch to a monophonic synth. Design from here on our will continue
+        // with that as an assumption, for sake of time/completeness. 
+
+        // Okay, so as the above, kinda wilin' on the number of instructions 
+        // this will take in comparison with our clock speed and thus our timer
+        // speed, we're all good
+
         // 113 is count on 5MHz clk that creates 44.1kHz
         while (duration < 113) {} // Wait for next sample, TMR1 < 113
+        TMR1 = 0; // Reset the timer at the beginning so is consistent
+
         PORTD = sine_wave[*current_phase]; // Load & send LSBs
         PORTC = sine_wave[*current_phase] >> 8; // Load & send MSBs
 
+        // For multiple notes, we have multiple current_phases, keep track of separately
+        // Do this in the same loop as adding all of the inputs!
         *current_phase += phase_step; // Increment current phase by step
         current_duration += 1; // Increment current duration by 1
 
-        TMR1 = 0; // Reset the timer
+        
     }
 }
 
