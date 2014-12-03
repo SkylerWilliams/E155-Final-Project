@@ -170,6 +170,7 @@ void initConfigs(void) {
     //  bit 0:  unused
     //T1CON = 0b10010000000000;
     //TMR1 = 0;
+    // Timer is commented out at the moment
 
     // Set PORTD and PORTC as output and initialize to zero
     TRISC = 0;
@@ -183,13 +184,16 @@ void initConfigs(void) {
     TRISFbits.TRISF5 = 0; // RF5 is UART3 TX (output) 
     TRISFbits.TRISF4 = 1; // RF4 is UART3 RX (input)
 
-    // Want rate of 115.2 Kbaud
+    // Want rate of 31250 baud
+    // #####################################################
     // Assuming PIC peripheral clock Fpb = Fosc / 2 = 20 MHz 
     // based on default instructions in lab 1.
-    // U3BRG = (Fpb / 4*baud rate) - 1
-    // -> U3BRG = 10 (decimal)
-    // Actual baud rate 113636.4 (-1.2% error)
-    U3ABRG = 10;
+    // #####################################################
+    // U3BRG = (Fpb / 16*baud rate) - 1
+    // -> U3BRG = 39 (decimal)
+    // Actual baud rate 31250
+    // Calculation found in GPIO lecture p.25
+    U3ABRG = 39;
 
     // UART3 Mode Register
     // bit 31-16: unused

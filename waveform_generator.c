@@ -53,7 +53,9 @@ int main() {
 // of E155.
 void initConfigs(void) {
     
-    //  Assumes peripheral clock at 5MHz
+    // ##################################
+    //  Assumes peripheral clock at 20MHz
+    // ##################################
     
     //  Use Timer1 for note duration
     //  T1CON
@@ -115,7 +117,9 @@ void playNote(unsigned short note, unsigned int duration, unsigned short *curren
         // speed, we're all good
 
         // 113 is count on 5MHz clk that creates 44.1kHz
-        while (duration < 113) {} // Wait for next sample, TMR1 < 113
+        // 907 is count on 40MHz clk that creates 44.1kHz
+        // 454 is count for 20MHz clk that creates 44.1kHz
+        while (duration < 454) {} // Wait for next sample, TMR1 < 113
         TMR1 = 0; // Reset the timer at the beginning so is consistent
 
         PORTD = sine_wave[*current_phase]; // Load & send LSBs
