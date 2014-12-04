@@ -42,10 +42,10 @@ module keypad_decoder(input logic clk,
     debouncer debounceKeypad(clk, keyPressed, keypad, mode_key, ctrl_key, row_key);
 
     // Initialize parameters controlled by the keypad
-    logic [1:0]waveform_select = 2'd0;
-    logic [1:0]filter_select = 2'd0;
-    logic [2:0]filter_params = 4'd0;
-    logic [7:0]amp_envelope = 8'd0;
+    //waveform_select = 2'd0;
+    //filter_select = 2'd0;
+    //filter_params = 4'd0;
+    //amp_envelope = 8'd0;
 
     // Act on the keyPressed according to the stored mode and control keys
     // This will have more outputs when we decide how exactly to output 
@@ -130,7 +130,7 @@ endmodule
  * Module Summary: Combinatorial logic to get the correct 4-bit number output 
  *                  for the 6-bit representation of the keypad.
  */
-module keypressCheck(input logic [5:0]keypad,,
+module keypressCheck(input logic [5:0]keypad,
                     output logic keyPressed);
 always_comb
     if (keypad == 6'b000_000)
@@ -153,7 +153,7 @@ endmodule
  */
 module debouncer(input logic clk,
                   input logic keyPressed,
-                  input logic [5:0]keypadInput,
+                  input logic [5:0]keypad,
                   output logic [2:0]mode_key,
                   output logic [2:0]ctrl_key,
                   output logic [2:0]row_key);
@@ -212,10 +212,13 @@ module keypadAction(input logic keyPressed,
                   input logic [2:0]mode_key,
                   input logic [2:0]ctrl_key,
                   input logic [2:0]row_key,
-                  output logic [1:0]waveform_select
+                  output logic [1:0]waveform_select,
                   output logic [1:0]filter_select,
                   output logic [2:0]filter_params,
                   output logic [7:0]amp_envelope);
+                        
+logic [1:0]ctrlMinusOne;
+assign ctrlMinusOne = ctrl_key - 1;
 
 always_comb
     if (keyPressed) // If keyPressed, then act on it according to selected mode
@@ -231,20 +234,25 @@ always_comb
                         waveform_select = 2'b01;
                         // Power correct LEDs
                         end
-                    3'b011 : begin // Sine wave
+                    3'b011 : begin // Triangle wave
                         waveform_select = 2'b10;
                         // Power correct LEDs
                         end
-                    3'b100 : // Do nothing, as this is the mode row
-                    default : // Do nothing, hit at init since ctrl_key is 0
+                    3'b100 : begin // Square wave
+                        waveform_select = 2'b11;
+                        // Power correct LEDs
+                        end
+                    default : waveform_select = 2'b00; // Sine wave by default
                 endcase
+                end
             3'b010 : begin // Filter Freqency Select Mode
-                if (keypadInput[3] & keypadInput[4]) // If 3rd row, select filter type
+                if (row_key[0] & row_key[1]) // If 3rd row, select filter type
                     filter_select = ctrl_key;
                 else // Otherwise, select filter parameter
                 begin
                     // Sends filter values 1-8, bottom left->top right, to filter
-                    filter_params = {(ctrl_key - 1)[1:0], ~row_key[0]}; 
+                    filter_params = {ctrlMinusOne, ~row_key[0]}; 
+                end
                 end
             3'b011 : begin // Amp ASDR Envelope Select Mode
                 case(ctrl_key)
@@ -262,11 +270,13 @@ always_comb
                         amp_envelope[7:6] = 3'b100 - row_key;
                         end
                 endcase
+                end
             3'b100 : begin // Stored Presets Select Mode
                 case(ctrl_key)
-                    // Cases for stored presets, these will modify everything from previous cases
+                    default : waveform_select = 2'b0; // Cases for stored presets, these will modify everything from previous cases
                 endcase
-            default : // Do nothing, hit at init since mode_key is 0
+                end
+            default : waveform_select = 2'b00; // Should never happen
         endcase
     end
 
