@@ -1,7 +1,8 @@
 /* Name & Email: Skyler Williams (szwilliams@hmc.edu)
  * Date of Creation: 09/24/2014
  *
- *  Modules for E155 Final Project Keypad Decoding
+ *  Modules for keypad control portion of 
+ *  E155 Final Project: Polyphonic MIDI-Driven Synthesizer.
  */
 
 
@@ -244,7 +245,7 @@ always_comb
                         end
                     default : waveform_select = 2'b00; // Sine wave by default
                 endcase
-                end
+            end
             3'b010 : begin // Filter Freqency Select Mode
                 if (row_key[0] & row_key[1]) // If 3rd row, select filter type
                     filter_select = ctrl_key;
@@ -253,7 +254,7 @@ always_comb
                     // Sends filter values 1-8, bottom left->top right, to filter
                     filter_params = {ctrlMinusOne, ~row_key[0]}; 
                 end
-                end
+            end
             3'b011 : begin // Amp ASDR Envelope Select Mode
                 case(ctrl_key)
                     3'b001 : begin // Attack, first 2 bits of amp. env.
@@ -270,12 +271,12 @@ always_comb
                         amp_envelope[7:6] = 3'b100 - row_key;
                         end
                 endcase
-                end
+            end
             3'b100 : begin // Stored Presets Select Mode
                 case(ctrl_key)
                     default : waveform_select = 2'b0; // Cases for stored presets, these will modify everything from previous cases
                 endcase
-                end
+            end
             default : waveform_select = 2'b00; // Should never happen
         endcase
     end
