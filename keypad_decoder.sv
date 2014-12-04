@@ -16,7 +16,7 @@ module keypad_decoder(input logic clk,
                 output logic [3:0]row,
                 output logic [1:0]waveform_select,
                 output logic [1:0]filter_select,
-                output logic [3:0]filter_params,
+                output logic [2:0]filter_params,
                 output logic [7:0]amp_envelope);
     
     // Initialize internal keypad value
@@ -36,20 +36,21 @@ module keypad_decoder(input logic clk,
     // Think these should be 3-bits since we only care about up to decimal 4 for each
     logic [2:0]mode_key = 3'd0;
     logic [2:0]ctrl_key = 3'd0;
+    logic [2:0]row_key = 3'd0;
 
     // Debounce switch signal and deal with storing keypresses in memory
-    debouncer debounceKeypad(clk, keyPressed, keypad, mode_key, ctrl_key);
+    debouncer debounceKeypad(clk, keyPressed, keypad, mode_key, ctrl_key, row_key);
 
     // Initialize parameters controlled by the keypad
     logic [1:0]waveform_select = 2'd0;
     logic [1:0]filter_select = 2'd0;
-    logic [3:0]filter_params = 4'd0;
+    logic [2:0]filter_params = 4'd0;
     logic [7:0]amp_envelope = 8'd0;
 
     // Act on the keyPressed according to the stored mode and control keys
     // This will have more outputs when we decide how exactly to output 
     // filter frequency and ASDR envelope
-    keypadAction processEvent(keyPressed, mode_key, ctrl_key, waveform_select, filter_select, filter_params, amp_envelope);
+    keypadAction processEvent(keyPressed, mode_key, ctrl_key, row_key, waveform_select, filter_select, filter_params, amp_envelope);
 
 endmodule
 
@@ -154,7 +155,8 @@ module debouncer(input logic clk,
                   input logic keyPressed,
                   input logic [5:0]keypadInput,
                   output logic [2:0]mode_key,
-                  output logic [2:0]ctrl_key);
+                  output logic [2:0]ctrl_key,
+                  output logic [2:0]row_key);
 // Testing counter at 60Hz value, seems to work well
 logic [17:0]count = 18'd0;
 logic memoryChange = 1'd1;
@@ -177,11 +179,12 @@ begin
             begin
                 if (is_mode)
                 begin
-                    mode_key = keypad[5:3]
+                    mode_key <= keypad[2:0]; // Still first three bits
                 end
                 else
-                    ctrl_key = keypad[2:0]
-                memoryChange = 1'b0;
+                    ctrl_key <= keypad[2:0];
+                    row_key <= keypad[5:3];
+                memoryChange <= 1'b0;
             end
         end
         else
@@ -208,13 +211,15 @@ endmodule
 module keypadAction(input logic keyPressed,
                   input logic [2:0]mode_key,
                   input logic [2:0]ctrl_key,
+                  input logic [2:0]row_key,
                   output logic [1:0]waveform_select
                   output logic [1:0]filter_select,
-                  output logic [3:0]filter_params,
+                  output logic [2:0]filter_params,
                   output logic [7:0]amp_envelope);
 
 always_comb
     if (keyPressed) // If keyPressed, then act on it according to selected mode
+    begin
         case(mode_key)
             3'b001 : begin // Waveform Select Mode
                 case(ctrl_key)
@@ -234,12 +239,28 @@ always_comb
                     default : // Do nothing, hit at init since ctrl_key is 0
                 endcase
             3'b010 : begin // Filter Freqency Select Mode
-                case(ctrl_key)
-                    // Cases for filter frequencies
-                endcase
+                if (keypadInput[3] & keypadInput[4]) // If 3rd row, select filter type
+                    filter_select = ctrl_key;
+                else // Otherwise, select filter parameter
+                begin
+                    // Sends filter values 1-8, bottom left->top right, to filter
+                    filter_params = {(ctrl_key - 1)[1:0], ~row_key[0]}; 
+                end
             3'b011 : begin // Amp ASDR Envelope Select Mode
                 case(ctrl_key)
-                    // Cases for ASDR envelope
+                    3'b001 : begin // Attack, first 2 bits of amp. env.
+                        // Subtraction give higher values for physically higher keys
+                        amp_envelope[1:0] = 3'b100 - row_key; 
+                        end
+                    3'b010 : begin // Decay, second 2 bits of amp. env.
+                        amp_envelope[3:2] = 3'b100 - row_key;
+                        end
+                    3'b011 : begin // Sustain, third 2 bits of amp. env.
+                        amp_envelope[5:4] = 3'b100 - row_key;
+                        end
+                    3'b100 : begin // Release, fourth 2 bits of amp. env.
+                        amp_envelope[7:6] = 3'b100 - row_key;
+                        end
                 endcase
             3'b100 : begin // Stored Presets Select Mode
                 case(ctrl_key)
@@ -247,6 +268,7 @@ always_comb
                 endcase
             default : // Do nothing, hit at init since mode_key is 0
         endcase
+    end
 
 endmodule
 
