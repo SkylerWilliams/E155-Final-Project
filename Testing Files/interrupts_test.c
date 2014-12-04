@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <P32xxxx.h>
+#include <sys/attribs.h>
 
 
 int second_counter = 0;
@@ -39,34 +40,53 @@ void initConfigs() {
     TRISD = 0;
     PORTD = 0;
 
+
+	IPC1 = 0x0000001F;   // Timer 1 IPL = 7, Sub = 3
     INTCON = 0x00000001; // Set single vec mode, rising edge on ext int 0
     IFS0bits.T1IF = 0;
     IEC0bits.T1IE = 1; // Enable Timer1 Interrupt
+	
+	// 400 tested to be close to 1s on average
+    PR1 = 400; // Set for 44.1kHz from a 20MHz clock, 454
+	
 
-    PR1 = 454; // Set for 44.1kHz from a 20MHz clock
+	INTEnableSystemMultiVectoredInt();
 
     T1CONbits.ON = 1; // Start the Timer
 }
 
 
 // Single Vector Interrupt Handler
-void __ISR_SINGLE() SingleVecHandler(void) {
-    if IFS0bits.T1IF {
+void __ISR(_TIMER_1_VECTOR, ipl7)_TIMER1_HANDLER(void) {
+    if (IFS0bits.T1IF) {
         TMR1 = 0; // Reset Timer1
-        ISF0bits.T1IF = 0; // Reset Timer1 interrupt
         ++second_counter;
-        if second_counter == 44100 {
+        // With PR1 set at 454, technically this should be 44053
+        // Could modify generated phase steps to make this work better
+        if (second_counter == 44100) {
             ++elapsed_seconds;
             PORTD = elapsed_seconds;
+			second_counter = 0;
         }
+		
     } 
+	IFS0bits.T1IF = 0; // Reset Timer1 interrupt
+	
 }
 
 
-int main () {
+int main() {
     initConfigs();
     // Loop infinitely to see if interrupts increment global variables
     // and if variables are displayed on the LEDs
-    while (1) {} 
+    while (1) {
+		//if (TMR1 >= 454) {
+			//PORTD = 1;
+			//++elapsed_seconds;
+            //PORTD = elapsed_seconds;
+	//	} else {
+			//PORTD = 0;
+	//	}
+	} 
     return 0;
 }
