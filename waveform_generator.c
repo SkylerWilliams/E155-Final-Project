@@ -92,7 +92,7 @@ void initConfigs(void) {
 void playNote(unsigned short note, unsigned int duration, unsigned short *current_phase) {
     unsigned short phase_step = phase_steps[note]; // Load note phase step
     unsigned int current_duration = 0; // Start duration at 0
-    TMR1 = 0; // Reset the timer
+    //TMR1 = 0; // Reset the timer
 
     while (current_duration < duration) {
 

@@ -6,7 +6,6 @@
 
 
 // Include Directives
-#include <stdio.h>
 #include <P32xxxx.h>
 
 
@@ -25,6 +24,12 @@
 #define WAVEFORM_SELECT PORTG >> 2 // Waveform_select is bits 2,3 of PORTG
 
 
+// Forward Table Declarations
+extern const unsigned short linear_wave[];
+extern const unsigned short sine_wave[];
+extern const unsigned short phase_steps[];
+
+
 // Global Variables
 unsigned char midi_status_byte = READ_STATUS;
 unsigned char midi_read_status = 0;
@@ -39,12 +44,6 @@ unsigned short current_note_values[8] = {0, 0, 0, 0, 0, 0, 0, 0}; // Fill in the
 unsigned char next_note_index = 0;
 
 char going_up = 1; // Variable for creating triangle waveform
-
-
-// Forward Table Declarations
-extern const unsigned short linear_wave[];
-extern const unsigned short phase_steps[];
-extern const unsigned short sine_wave[];
 
 
 // Forward Function Declarations
