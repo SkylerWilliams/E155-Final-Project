@@ -26,12 +26,10 @@ def generatePhaseSteps(num_period_bits, sample_rate, start_note, stop_note):
         else:
             output_table += str(phase_step) + ","
 
-    print output_table
-
     f = open('phase_steps.txt', 'w')
     f.write(output_table)
     f.close()
-    print output_table
+    #print output_table
 
 
 def generateSawtoothWave(num_period_bits, num_output_bits):
@@ -63,7 +61,7 @@ def generateSawtoothWave(num_period_bits, num_output_bits):
     f = open('sawtooth_lut.txt', 'w')
     f.write(output_table)
     f.close()
-    print output_table
+    #print output_table
 
 
 def generateSquareWave(num_period_bits, num_output_bits):
@@ -94,13 +92,13 @@ def generateSquareWave(num_period_bits, num_output_bits):
     f = open('square_lut.txt', 'w')
     f.write(output_table)
     f.close()
-    print output_table
+    #print output_table
     
 
 def main():
-    generatePhaseSteps(16, 44100, 51, 109)
+    generatePhaseSteps(16, 44054, 21, 109)
     # generateSquareWave(16, 12)
-    # generateSawtoothWave(16, 12)
+    generateSawtoothWave(16, 16)
 
 if __name__ == "__main__":
     main()
