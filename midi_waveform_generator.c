@@ -132,7 +132,6 @@ char read_midi_byte(void)
 void increment_note_index() {
     int i = 0;
     for (; i < MAX_NOTES; ++i) { // For each MAX_NOTES potential note entries
-        // TODO: Fix this so it works properly with MAX_NOTES const
         if (current_notes[next_note_index] == 0) {
             break;
         } else {

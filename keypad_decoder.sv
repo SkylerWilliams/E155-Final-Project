@@ -51,7 +51,7 @@ module keypad_decoder(input logic clk,
     // Act on the keyPressed according to the stored mode and control keys
     // This will have more outputs when we decide how exactly to output 
     // filter frequency and ASDR envelope
-    keypadAction processEvent(keyPressed, mode_key, ctrl_key, row_key, waveform_select, filter_select, filter_params, amp_envelope);
+    keypadAction processEvent(clk, keyPressed, mode_key, ctrl_key, row_key, waveform_select, filter_select, filter_params, amp_envelope);
 
 endmodule
 
@@ -62,7 +62,7 @@ endmodule
  * 
  * Module Summary: Scanning circuit to extract keypresses from the 16-key
  *                  keypad. Using counters, the rows and columns are looped 
- *                  through, powering each row using combinatorial logic 
+ *                  through, powering each row using combinational logic 
  *                  and checking if each column is subsequently powered to 
  *                  determine keypresses. First key pressed is key read. 
  *                  Keypad is represented as 6-bits, with the first 3 bits 
@@ -164,11 +164,7 @@ logic memoryChange = 1'd1;
 logic is_mode = 1'd0;
 
 // If the bottom row is powered, then it's a mode
-always_comb
-    if (keypad[5])
-        is_mode = 1;
-    else
-        is_mode = 0;
+assign is_mode = keypad[5];
 
 always_ff@(posedge clk)
 begin    
@@ -181,20 +177,43 @@ begin
                 if (is_mode)
                 begin
                     mode_key <= keypad[2:0]; // Still first three bits
+					ctrl_key <= 3'b000;
+					row_key <= row_key;
                 end
                 else
+				begin
                     ctrl_key <= keypad[2:0];
                     row_key <= keypad[5:3];
+					mode_key <= mode_key;
+				end
                 memoryChange <= 1'b0;
+				count <= count;
             end
+			else
+			begin
+			    count <= count;
+				memoryChange <= memoryChange;
+				ctrl_key <= ctrl_key;
+				row_key <= row_key;
+				mode_key <= mode_key;
+		    end
         end
         else
+		begin
             count <= count + 1'b1;
+			memoryChange <= memoryChange;
+			ctrl_key <= ctrl_key;
+			row_key <= row_key;
+			mode_key <= mode_key;
+		end
     end
     else
     begin
         count <= '0;
-        memoryChange = 1'b1;
+        memoryChange <= 1'b1;
+		ctrl_key <= ctrl_key;
+		row_key <= row_key;
+		mode_key <= mode_key;
     end
 end
 
@@ -209,7 +228,8 @@ endmodule
  *                  ctrl_key selected, when keyPressed.
  *                  
  */
-module keypadAction(input logic keyPressed,
+module keypadAction(input logic clk,
+                  input logic keyPressed,
                   input logic [2:0]mode_key,
                   input logic [2:0]ctrl_key,
                   input logic [2:0]row_key,
@@ -221,64 +241,122 @@ module keypadAction(input logic keyPressed,
 logic [1:0]ctrlMinusOne;
 assign ctrlMinusOne = ctrl_key - 1;
 
-always_comb
-    if (keyPressed) // If keyPressed, then act on it according to selected mode
-    begin
+always_ff @(posedge clk)
+    if (keyPressed)
+	begin
         case(mode_key)
             3'b001 : begin // Waveform Select Mode
                 case(ctrl_key)
                     3'b001 : begin // Sine wave
-                        waveform_select = 2'b00;
+                        waveform_select <= 2'b00;
+                        filter_select <= filter_select;
+                        filter_params <= filter_params;
+		      	        amp_envelope <= amp_envelope;
                         // Power correct LEDs
-                        end
+                    end
                     3'b010 : begin // Sawtooth wave
-                        waveform_select = 2'b01;
+                        waveform_select <= 2'b01;
+                        filter_select <= filter_select;
+                        filter_params <= filter_params;
+						amp_envelope <= amp_envelope;
                         // Power correct LEDs
-                        end
+                    end
                     3'b011 : begin // Triangle wave
-                        waveform_select = 2'b10;
+                        waveform_select <= 2'b10;
+                        filter_select <= filter_select;
+                        filter_params <= filter_params;
+	   		 			amp_envelope <= amp_envelope;
                         // Power correct LEDs
-                        end
+                    end
                     3'b100 : begin // Square wave
-                        waveform_select = 2'b11;
+                        waveform_select <= 2'b11;
+                        filter_select <= filter_select;
+                        filter_params <= filter_params;
+						amp_envelope <= amp_envelope;
                         // Power correct LEDs
-                        end
-                    default : waveform_select = 2'b00; // Sine wave by default
+                    end
+                    default : begin // Don't change anything
+                        waveform_select <= waveform_select;
+                        filter_select <= filter_select;
+                        filter_params <= filter_params;
+				   		amp_envelope <= amp_envelope;
+                    end
                 endcase
             end
             3'b010 : begin // Filter Freqency Select Mode
                 if (row_key[0] & row_key[1]) // If 3rd row, select filter type
-                    filter_select = ctrl_key;
+                begin
+                    waveform_select <= waveform_select;
+                    filter_select <= ctrl_key - 1;
+                    filter_params <= filter_params;
+			   	 	amp_envelope <= amp_envelope;
+                end
                 else // Otherwise, select filter parameter
                 begin
                     // Sends filter values 1-8, bottom left->top right, to filter
-                    filter_params = {ctrlMinusOne, ~row_key[0]}; 
+                    waveform_select <= waveform_select;
+                    filter_select <= filter_select;
+                    filter_params <= {ctrlMinusOne, ~row_key[0]};
+					//amp_envelope <= amp_envelope;
+					amp_envelope[2:0] <= row_key;
                 end
             end
             3'b011 : begin // Amp ASDR Envelope Select Mode
                 case(ctrl_key)
                     3'b001 : begin // Attack, first 2 bits of amp. env.
                         // Subtraction give higher values for physically higher keys
-                        amp_envelope[1:0] = 3'b100 - row_key; 
-                        end
+		 	   			waveform_select <= waveform_select;
+				   		filter_select <= filter_select;
+						filter_params <= filter_params;
+                        amp_envelope[1:0] <= 3'b100 - row_key;
+                    end
                     3'b010 : begin // Decay, second 2 bits of amp. env.
-                        amp_envelope[3:2] = 3'b100 - row_key;
-                        end
+					    waveform_select <= waveform_select;
+					    filter_select <= filter_select;
+						filter_params <= filter_params;
+                        amp_envelope[3:2] <= 3'b100 - row_key;
+                    end
                     3'b011 : begin // Sustain, third 2 bits of amp. env.
-                        amp_envelope[5:4] = 3'b100 - row_key;
-                        end
+					    waveform_select <= waveform_select;
+						filter_select <= filter_select;
+						filter_params <= filter_params;
+                        amp_envelope[5:4] <= 3'b100 - row_key;
+                    end
                     3'b100 : begin // Release, fourth 2 bits of amp. env.
-                        amp_envelope[7:6] = 3'b100 - row_key;
-                        end
+					    waveform_select <= waveform_select;
+						filter_select <= filter_select;
+						filter_params <= filter_params;
+                        amp_envelope[7:6] <= 3'b100 - row_key;
+                    end
+					default : begin // Don't change anything
+					    waveform_select <= waveform_select;
+						filter_select <= filter_select;
+						filter_params <= filter_params;
+						amp_envelope <= amp_envelope;
+				    end
                 endcase
             end
             3'b100 : begin // Stored Presets Select Mode
                 case(ctrl_key)
-                    default : waveform_select = 2'b0; // Cases for stored presets, these will modify everything from previous cases
+                    default : begin
+				  	    waveform_select <= waveform_select; // Cases for stored presets, these will modify everything from previous cases---for now, do nothing
+						filter_select <= filter_select;
+						filter_params <= filter_params;
+						amp_envelope <= amp_envelope;
+				    end
                 endcase
             end
-            default : waveform_select = 2'b00; // Should never happen
+            default : begin // Do nothing
+		        waveform_select <= waveform_select;
+				filter_select <= filter_select;
+				filter_params <= filter_params;
+				amp_envelope <= amp_envelope;
+		    end
         endcase
+	end
+    else
+	 begin
+	     //
     end
 
 endmodule
