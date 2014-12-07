@@ -19,11 +19,20 @@
 #define READ_STATUS 0
 
 #define AMP_ENVELOPE PORTE
+#define AMP_ENVELOPE_CONFIG TRISE
+#define DEBUG_LEDS PORTD
+#define DEBUG_LEDS_CONFIG TRISD
+#define SAMPLE_SEND_MASK 0b1000000
+#define WAVE_OUTPUT PORTB
+#define WAVE_OUTPUT_CONFIG TRISB
+#define WAVEFORM_SELECT 0//WAVE_SELECT_SAMPLE_SEND >> 2 // Waveform_select is bits 2,3 of PORTG
+#define WAVE_SELECT_SAMPLE_SEND PORTG
+#define WAVE_SELECT_SAMPLE_SEND_CONFIG TRISG
+
 #define SAWTOOTH_SELECT 1
 #define SINE_SELECT 0
 #define SQUARE_SELECT 3
 #define TRIANGLE_SELECT 2
-#define WAVEFORM_SELECT 0//PORTG >> 2 // Waveform_select is bits 2,3 of PORTG
 
 
 // Forward Table Declarations
@@ -125,7 +134,7 @@ void increment_note_index() {
     for (; i < MAX_NOTES; ++i) { // For each MAX_NOTES potential note entries
         // TODO: Fix this so it works properly with MAX_NOTES const
         if (current_notes[next_note_index] == 0) {
-			break;
+            break;
         } else {
             ++next_note_index;
 
@@ -153,7 +162,7 @@ void process_new_note() {
         increment_note_index();
 
         // Turn on some LEDs for testing, set to value of note played
-        PORTD = newest_note;
+        DEBUG_LEDS = newest_note;
     } else { // Check if newest_note is in current_notes and remove if so
         int i = 0;
         for (; i < MAX_NOTES; ++i) {
@@ -161,7 +170,7 @@ void process_new_note() {
                 current_notes[i] = 0;
                 current_phases[i] = 0;
                 current_phase_steps[i] = 0;
-				PORTD = 0;
+                DEBUG_LEDS = 0;
                 break;
             }
         }
@@ -198,14 +207,12 @@ void init_configs(void) {
 
     // Set PORTD and PORTC as output and initialize to zero
     // NOTE: cannot use PORTF as is used by UART
-    TRISB = 0; // Set PORTB for all output
-    TRISC = 0; // Set PORTC for all output
-    TRISD = 0; // Set PORTD for all output
-    TRISE = 0xFF; // Set PORTE for all input,
-    TRISG = 0b0001100; // Set bits 2 and 3 for input, ping 6 for output
-    PORTB = 0; // Initialize wave output register to 0
-    PORTC = 0; // Initialize PORTC to 0
-    PORTD = 0; // Initialize LEDs to 0
+    WAVE_OUTPUT_CONFIG = 0; // Set PORTB for all output
+    DEBUG_LEDS_CONFIG = 0; // Set PORTD for all output
+    AMP_ENVELOPE_CONFIG = 0xFF; // Set PORTE for all input,
+    WAVE_SELECT_SAMPLE_SEND_CONFIG = 0b0001100; // Set bits 2 and 3 for input, ping 6 for output
+    WAVEFORM_OUTPUT = 0; // Initialize wave output register to 0
+    DEBUG_LEDS = 0; // Initialize LEDs to 0
 
 
     // Configure UART
@@ -294,7 +301,7 @@ void __ISR(_TIMER_1_VECTOR, ipl7)_TIMER1_HANDLER(void) {
             if (current_notes[i] != 0) {
                 wave_sum += current_note_values[i];
                 ++num_notes;
-				//PORTD = current_note_values[i];
+                //PORTD = current_note_values[i];
             }
         }
 
@@ -304,9 +311,8 @@ void __ISR(_TIMER_1_VECTOR, ipl7)_TIMER1_HANDLER(void) {
         }
 
         // For informing FPGA, need to use another I/O Register, will use PORTG bit 6
-        PORTB = wave_sum; // Send wave value
-		//PORTD = wave_sum;
-        PORTG = PORTG | 0b1000000; // Set sample_sent flag, cleared on FPGA?
+        WAVEFORM_OUTPUT = wave_sum; // Send wave value
+        WAVE_SELECT_SAMPLE_SEND = WAVE_SELECT_SAMPLE_SEND | SAMPLE_SEND_MASK; // Set sample_sent flag, cleared on FPGA?
 
         // Load active notes and update phases as appropriate
         i = 0;
