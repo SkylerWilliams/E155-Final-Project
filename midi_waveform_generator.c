@@ -48,10 +48,10 @@ unsigned char midi_input = 0;
 unsigned char newest_note = 0;
 unsigned char newest_velocity = 0;
 
-unsigned char current_notes[MAX_NOTES] = {0, 0, 0, 0, 0}; // MIDI notes aka 1...127
-short current_phase_steps[MAX_NOTES] = {0, 0, 0, 0, 0}; // Signed so can do negative for tri. wave
-unsigned short current_phases[MAX_NOTES] = {0, 0, 0, 0, 0};
-unsigned short current_note_values[MAX_NOTES] = {0, 0, 0, 0, 0}; // Fill in the interrupt code
+unsigned char current_notes[MAX_NOTES] = {0}; // MIDI notes aka 1...127
+short current_phase_steps[MAX_NOTES] = {0}; // Signed so can do negative for tri. wave
+unsigned short current_phases[MAX_NOTES] = {0};
+unsigned short current_note_values[MAX_NOTES] = {0}; // Fill in the interrupt code
 unsigned char next_note_index = 0;
 
 char going_up = 1; // Variable for creating triangle waveform
